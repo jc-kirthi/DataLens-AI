@@ -25,84 +25,43 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 2. Modern Professional CSS Design System
+# 2. Theme-Adaptive Modern CSS (Supports Light & Dark Modes seamlessly)
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #F8FAFC;
-    }
     .datalens-header {
         padding: 1.5rem 0 0.5rem 0;
-        border-bottom: 2px solid #E2E8F0;
+        border-bottom: 2px solid rgba(128, 128, 128, 0.2);
         margin-bottom: 2rem;
     }
     .main-title {
         font-size: 2.25rem;
         font-weight: 800;
-        color: #0F172A;
         letter-spacing: -0.025em;
         margin-bottom: 0.2rem;
     }
     .sub-title {
         font-size: 1.05rem;
-        color: #64748B;
         font-weight: 400;
+        opacity: 0.8;
     }
     h3 {
-        color: #1E293B !important;
         font-weight: 700 !important;
         font-size: 1.25rem !important;
         margin-top: 1rem !important;
         margin-bottom: 0.75rem !important;
     }
-    div[data-testid="stMetric"] {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        padding: 1rem 1.2rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-    }
-    div[data-testid="stMetric"] label {
-        color: #64748B !important;
-        font-weight: 500 !important;
-        font-size: 0.85rem !important;
-    }
-    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-        color: #0F172A !important;
-        font-weight: 700 !important;
-        font-size: 1.5rem !important;
-    }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #F1F5F9;
-        padding: 6px;
-        border-radius: 0.75rem;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 42px;
-        background-color: transparent;
-        border-radius: 0.5rem;
-        color: #475569;
-        font-weight: 600;
-        font-size: 0.9rem;
-        padding: 0 16px;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #FFFFFF !important;
-        color: #0F172A !important;
-        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    }
     .ai-card {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
+        border: 1px solid rgba(128, 128, 128, 0.2);
         border-radius: 0.75rem;
         padding: 1.25rem;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
         height: 100%;
     }
-    section[data-testid="stSidebar"] {
-        background-color: #FFFFFF;
-        border-right: 1px solid #E2E8F0;
+    .landing-box {
+        border: 1px dashed rgba(128, 128, 128, 0.4);
+        padding: 3rem;
+        border-radius: 1rem;
+        text-align: center;
+        margin-top: 2rem;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -122,7 +81,7 @@ def load_csv_data(file):
     except Exception as e:
         raise ValueError(f"Error reading CSV file: {str(e)}")
 
-# 4. Sidebar: File Upload, Controls & Enhancement 1 (Export Cleaned Data)
+# 4. Sidebar: File Upload, Controls & CSV Export
 with st.sidebar:
     st.markdown("### 📁 Dataset Control")
     uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"], help="Select any tabular CSV dataset to begin analysis.")
@@ -132,7 +91,6 @@ with st.sidebar:
         try:
             raw_df = load_csv_data(uploaded_file)
             if not raw_df.empty:
-                # Enhancement 1: Cleaned dataset preparation (drop empty rows/columns, fill missing text if needed)
                 cleaned_df = raw_df.dropna(how='all').dropna(axis=1, how='all')
                 
                 st.markdown("---")
@@ -155,7 +113,7 @@ with st.sidebar:
         "instant Pandas profiling, interactive Plotly visualizations, and Google Gemini-powered insights."
     )
     st.markdown("---")
-    st.caption("College Mini-Project Demo • v2.0")
+    st.caption("DataLens AI • Intelligent Analytics Assistant")
 
 if uploaded_file is not None:
     try:
@@ -168,7 +126,7 @@ if uploaded_file is not None:
             
         analysis = analyze_dataset(df)
 
-        # Enhancement 3: Compute Automated Data Health Score (0-100)
+        # Compute Automated Data Health Score (0-100)
         total_cells = df.shape[0] * df.shape[1]
         missing_cells = int(df.isnull().sum().sum())
         duplicate_rows = int(analysis['duplicate_count'])
@@ -177,7 +135,6 @@ if uploaded_file is not None:
         duplicate_penalty = min(30, (duplicate_rows / max(1, df.shape[0])) * 30)
         health_score = max(10, int(100 - missing_penalty - duplicate_penalty))
 
-        # Sidebar Quick Metrics Summary
         st.sidebar.success("Dataset loaded successfully!")
         col_s1, col_s2 = st.sidebar.columns(2)
         col_s1.metric("Rows", f"{analysis['row_count']:,}")
@@ -314,7 +271,7 @@ if uploaded_file is not None:
                 if fig_missing:
                     st.plotly_chart(fig_missing, use_container_width=True)
 
-        # --- TAB 4: AI ASSISTANT & INSIGHTS (Includes Enhancement 2: Ask Your Data Chat) ---
+        # --- TAB 4: AI ASSISTANT & INSIGHTS ---
         with tab_ai:
             st.markdown("### 🤖 Google Gemini AI Assistant")
             st.markdown("Translate statistical calculations into intelligent narratives or ask custom questions about your dataset.")
@@ -326,7 +283,7 @@ if uploaded_file is not None:
                 st.markdown("""
                     <div class="ai-card">
                         <h4>1. Executive Summary</h4>
-                        <p style="color: #64748B; font-size: 0.9rem;">Understand what the dataset represents and its core schema.</p>
+                        <p style="opacity: 0.8; font-size: 0.9rem;">Understand what the dataset represents and its core schema.</p>
                     </div>
                 """, unsafe_allow_html=True)
                 if st.button("Generate Explanation", type="primary", key="btn_exp", use_container_width=True):
@@ -340,7 +297,7 @@ if uploaded_file is not None:
                 st.markdown("""
                     <div class="ai-card">
                         <h4>2. Pattern Insights</h4>
-                        <p style="color: #64748B; font-size: 0.9rem;">Identify distributions, outliers, and notable data patterns.</p>
+                        <p style="opacity: 0.8; font-size: 0.9rem;">Identify distributions, outliers, and notable data patterns.</p>
                     </div>
                 """, unsafe_allow_html=True)
                 if st.button("Extract Insights", type="primary", key="btn_ins", use_container_width=True):
@@ -354,7 +311,7 @@ if uploaded_file is not None:
                 st.markdown("""
                     <div class="ai-card">
                         <h4>3. Analysis Questions</h4>
-                        <p style="color: #64748B; font-size: 0.9rem;">Get structured questions categorized by skill level.</p>
+                        <p style="opacity: 0.8; font-size: 0.9rem;">Get structured questions categorized by skill level.</p>
                     </div>
                 """, unsafe_allow_html=True)
                 if st.button("Formulate Questions", type="primary", key="btn_q", use_container_width=True):
@@ -379,15 +336,15 @@ if uploaded_file is not None:
         st.error(f"An error occurred while processing the dataset: {str(e)}")
 else:
     st.markdown("""
-        <div style="background: #FFFFFF; border: 1px dashed #CBD5E1; padding: 3rem; border-radius: 1rem; text-align: center; margin-top: 2rem;">
-            <h3 style="color: #0F172A; margin-bottom: 0.5rem;">No Dataset Uploaded Yet</h3>
-            <p style="color: #64748B; max-width: 500px; margin: 0 auto 1.5rem auto;">
+        <div class="landing-box">
+            <h3 style="margin-bottom: 0.5rem;">No Dataset Uploaded Yet</h3>
+            <p style="opacity: 0.8; max-width: 500px; margin: 0 auto 1.5rem auto;">
                 Please upload a CSV file using the sidebar panel to launch your automated exploratory data analysis and AI assistant.
             </p>
         </div>
     """, unsafe_allow_html=True)
     
-    with st.expander("ℹ️ How to use DataLens AI (Demo Guide)"):
+    with st.expander("ℹ️ How to use DataLens AI"):
         st.markdown("""
         1. **Upload your CSV file** via the sidebar uploader.
         2. **View the Automated Data Health Score** on the Overview tab to assess dataset quality instantly.
