@@ -13,7 +13,8 @@ from utils.visualizations import (
 from utils.ai_service import (
     generate_dataset_summary,
     generate_insights,
-    generate_analysis_questions
+    generate_analysis_questions,
+    answer_data_query
 )
 
 # 1. Page Configuration
@@ -27,12 +28,9 @@ st.set_page_config(
 # 2. Modern Professional CSS Design System
 st.markdown("""
     <style>
-    /* Main Theme & Background Accent */
     .stApp {
         background-color: #F8FAFC;
     }
-    
-    /* Typography & Headers */
     .datalens-header {
         padding: 1.5rem 0 0.5rem 0;
         border-bottom: 2px solid #E2E8F0;
@@ -50,8 +48,6 @@ st.markdown("""
         color: #64748B;
         font-weight: 400;
     }
-    
-    /* Section Headings */
     h3 {
         color: #1E293B !important;
         font-weight: 700 !important;
@@ -59,19 +55,12 @@ st.markdown("""
         margin-top: 1rem !important;
         margin-bottom: 0.75rem !important;
     }
-
-    /* Custom Metric Cards Styling */
     div[data-testid="stMetric"] {
         background-color: #FFFFFF;
         border: 1px solid #E2E8F0;
         padding: 1rem 1.2rem;
         border-radius: 0.75rem;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-        transition: all 0.2s ease-in-out;
-    }
-    div[data-testid="stMetric"]:hover {
-        border-color: #CBD5E1;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
     div[data-testid="stMetric"] label {
         color: #64748B !important;
@@ -83,8 +72,6 @@ st.markdown("""
         font-weight: 700 !important;
         font-size: 1.5rem !important;
     }
-
-    /* Tabs Customization */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         background-color: #F1F5F9;
@@ -105,16 +92,6 @@ st.markdown("""
         color: #0F172A !important;
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     }
-
-    /* Button Styling enhancements */
-    .stButton button {
-        border-radius: 0.5rem;
-        font-weight: 600;
-        padding: 0.5rem 1rem;
-        transition: all 0.2s ease;
-    }
-    
-    /* AI Assistant Card Container */
     .ai-card {
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
@@ -123,8 +100,6 @@ st.markdown("""
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02);
         height: 100%;
     }
-    
-    /* Sidebar Polish */
     section[data-testid="stSidebar"] {
         background-color: #FFFFFF;
         border-right: 1px solid #E2E8F0;
@@ -140,7 +115,6 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Caching CSV Loading for Performance
 @st.cache_data(show_spinner=False)
 def load_csv_data(file):
     try:
@@ -148,11 +122,32 @@ def load_csv_data(file):
     except Exception as e:
         raise ValueError(f"Error reading CSV file: {str(e)}")
 
-# 4. Sidebar: File Upload & Project Navigation Context
+# 4. Sidebar: File Upload, Controls & Enhancement 1 (Export Cleaned Data)
 with st.sidebar:
     st.markdown("### 📁 Dataset Control")
     uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"], help="Select any tabular CSV dataset to begin analysis.")
     
+    cleaned_df = None
+    if uploaded_file is not None:
+        try:
+            raw_df = load_csv_data(uploaded_file)
+            if not raw_df.empty:
+                # Enhancement 1: Cleaned dataset preparation (drop empty rows/columns, fill missing text if needed)
+                cleaned_df = raw_df.dropna(how='all').dropna(axis=1, how='all')
+                
+                st.markdown("---")
+                st.markdown("### 📥 Export Options")
+                csv_bytes = cleaned_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="Download Cleaned CSV",
+                    data=csv_bytes,
+                    file_name="datalens_cleaned_dataset.csv",
+                    mime="text/csv",
+                    help="Download a cleaned version of the dataset with empty rows and columns removed."
+                )
+        except Exception:
+            pass
+
     st.markdown("---")
     st.markdown("### 💡 About DataLens AI")
     st.markdown(
@@ -160,19 +155,27 @@ with st.sidebar:
         "instant Pandas profiling, interactive Plotly visualizations, and Google Gemini-powered insights."
     )
     st.markdown("---")
-    st.caption("College Mini-Project Demo • v1.2")
+    st.caption("College Mini-Project Demo • v2.0")
 
 if uploaded_file is not None:
     try:
         with st.spinner("Analyzing dataset structure..."):
             df = load_csv_data(uploaded_file)
             
-        # Validate dataset is not empty
         if df.empty:
             st.error("The uploaded CSV file is empty. Please upload a valid dataset.")
             st.stop()
             
         analysis = analyze_dataset(df)
+
+        # Enhancement 3: Compute Automated Data Health Score (0-100)
+        total_cells = df.shape[0] * df.shape[1]
+        missing_cells = int(df.isnull().sum().sum())
+        duplicate_rows = int(analysis['duplicate_count'])
+        
+        missing_penalty = (missing_cells / total_cells) * 40 if total_cells > 0 else 0
+        duplicate_penalty = min(30, (duplicate_rows / max(1, df.shape[0])) * 30)
+        health_score = max(10, int(100 - missing_penalty - duplicate_penalty))
 
         # Sidebar Quick Metrics Summary
         st.sidebar.success("Dataset loaded successfully!")
@@ -180,7 +183,6 @@ if uploaded_file is not None:
         col_s1.metric("Rows", f"{analysis['row_count']:,}")
         col_s2.metric("Columns", f"{analysis['col_count']:,}")
 
-        # Quick Dataset Preview Expander
         with st.expander("👀 Quick Dataset Preview (First 5 Rows)", expanded=False):
             st.dataframe(df.head(5), use_container_width=True)
 
@@ -188,14 +190,27 @@ if uploaded_file is not None:
 
         # 5. Main Dashboard Navigation Tabs
         tab_overview, tab_explore, tab_visuals, tab_ai = st.tabs([
-            "📊 Overview & Quality", 
+            "📊 Overview & Health", 
             "🔍 Column Explorer", 
             "📈 Visual Analytics", 
             "🤖 Gemini AI Assistant"
         ])
 
-        # --- TAB 1: OVERVIEW & QUALITY ---
+        # --- TAB 1: OVERVIEW & HEALTH SCORE ---
         with tab_overview:
+            st.markdown("### 🏥 Automated Data Health Score")
+            hcol1, hcol2, hcol3 = st.columns([1, 2, 1])
+            with hcol1:
+                st.metric("Health Score", f"{health_score}/100", delta="Quality Index")
+            with hcol2:
+                if health_score >= 80:
+                    st.success("🟢 **High Data Quality:** Clean dataset with minimal missing values or duplication.")
+                elif health_score >= 50:
+                    st.warning("🟡 **Moderate Data Quality:** Contains noticeable missing values or duplicates requiring attention.")
+                else:
+                    st.error("🔴 **Low Data Quality:** High ratio of missing cells or redundant rows detected.")
+            
+            st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
             st.markdown("### 📊 High-Level Dataset Structure")
             col1, col2, col3, col4 = st.columns(4)
             with col1:
@@ -211,16 +226,15 @@ if uploaded_file is not None:
             
             st.markdown("### 🛡️ Data Quality Audit")
             qcol1, qcol2, qcol3 = st.columns(3)
-            total_missing = int(df.isnull().sum().sum())
             with qcol1:
-                st.metric("Total Missing Cells", f"{total_missing:,}")
+                st.metric("Total Missing Cells", f"{missing_cells:,}")
             with qcol2:
                 missing_cols_count = len(analysis['missing_summary'][analysis['missing_summary']['Missing Count'] > 0])
                 st.metric("Affected Columns", missing_cols_count)
             with qcol3:
-                st.metric("Duplicate Rows", f"{analysis['duplicate_count']:,}")
+                st.metric("Duplicate Rows", f"{duplicate_rows:,}")
 
-            if not analysis['missing_summary'].empty and total_missing > 0:
+            if not analysis['missing_summary'].empty and missing_cells > 0:
                 with st.expander("📋 View Detailed Missing Values Breakdown Table", expanded=False):
                     st.dataframe(analysis['missing_summary'], use_container_width=True)
 
@@ -300,15 +314,14 @@ if uploaded_file is not None:
                 if fig_missing:
                     st.plotly_chart(fig_missing, use_container_width=True)
 
-        # --- TAB 4: AI ASSISTANT & INSIGHTS ---
+        # --- TAB 4: AI ASSISTANT & INSIGHTS (Includes Enhancement 2: Ask Your Data Chat) ---
         with tab_ai:
             st.markdown("### 🤖 Google Gemini AI Assistant")
-            st.markdown("Translate statistical calculations and data profiles into intelligent natural-language narratives and guidance.")
+            st.markdown("Translate statistical calculations into intelligent narratives or ask custom questions about your dataset.")
             st.markdown("<div style='margin: 1rem 0;'></div>", unsafe_allow_html=True)
 
             ai_col1, ai_col2, ai_col3 = st.columns(3)
 
-            # F. AI Dataset Explanation
             with ai_col1:
                 st.markdown("""
                     <div class="ai-card">
@@ -323,7 +336,6 @@ if uploaded_file is not None:
                         st.markdown("### Explanation Results")
                         st.markdown(explanation)
 
-            # G. AI Insights
             with ai_col2:
                 st.markdown("""
                     <div class="ai-card">
@@ -338,7 +350,6 @@ if uploaded_file is not None:
                         st.markdown("### Insight Results")
                         st.markdown(insights)
 
-            # H. Suggested Analysis Questions
             with ai_col3:
                 st.markdown("""
                     <div class="ai-card">
@@ -353,10 +364,20 @@ if uploaded_file is not None:
                         st.markdown("### Suggested Questions")
                         st.markdown(questions)
 
+            st.markdown("<div style='margin: 2rem 0 1rem 0;'></div>", unsafe_allow_html=True)
+            st.markdown("### 💬 Ask Your Data (Interactive AI Chat)")
+            st.markdown("Type any question in plain English about your uploaded dataset:")
+            
+            user_query = st.text_input("e.g., Which column has the most missing values or what patterns stand out?", placeholder="Ask a question about this dataset...")
+            if user_query:
+                with st.spinner("Gemini is analyzing your question against the dataset profile..."):
+                    chat_response = answer_data_query(analysis, user_query)
+                    st.markdown("**AI Answer:**")
+                    st.info(chat_response)
+
     except Exception as e:
         st.error(f"An error occurred while processing the dataset: {str(e)}")
 else:
-    # Professional Landing Empty State
     st.markdown("""
         <div style="background: #FFFFFF; border: 1px dashed #CBD5E1; padding: 3rem; border-radius: 1rem; text-align: center; margin-top: 2rem;">
             <h3 style="color: #0F172A; margin-bottom: 0.5rem;">No Dataset Uploaded Yet</h3>
@@ -369,8 +390,7 @@ else:
     with st.expander("ℹ️ How to use DataLens AI (Demo Guide)"):
         st.markdown("""
         1. **Upload your CSV file** via the sidebar uploader.
-        2. **Explore Overview & Quality** to instantly view row/column counts, missing values, and duplication summaries.
-        3. **Inspect Column Explorer** for granular data types, missing rates, and statistical distributions.
-        4. **View Visual Analytics** for automated Plotly histograms, bar charts, and correlation heatmaps.
-        5. **Consult Gemini AI Assistant** to generate executive summaries, anomaly insights, and structured analytical questions.
+        2. **View the Automated Data Health Score** on the Overview tab to assess dataset quality instantly.
+        3. **Export Cleaned Data** using the one-click download button in the sidebar.
+        4. **Ask Custom Questions** in plain English using the interactive AI chat bar at the bottom of the AI Assistant tab.
         """)
