@@ -74,12 +74,23 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# Robust CSV Loading with Encoding & Delimiter Fallbacks
 @st.cache_data(show_spinner=False)
 def load_csv_data(file):
     try:
         return pd.read_csv(file)
+    except UnicodeDecodeError:
+        try:
+            file.seek(0)
+            return pd.read_csv(file, encoding='latin-1')
+        except Exception as e:
+            raise ValueError(f"Error reading CSV file with alternative encoding: {str(e)}")
     except Exception as e:
-        raise ValueError(f"Error reading CSV file: {str(e)}")
+        try:
+            file.seek(0)
+            return pd.read_csv(file, sep=None, engine='python')
+        except Exception:
+            raise ValueError(f"Error reading CSV file: {str(e)}")
 
 # 4. Sidebar: File Upload, Controls & CSV Export
 with st.sidebar:
