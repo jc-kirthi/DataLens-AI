@@ -1,0 +1,10 @@
+# Streamlit local secrets
+.streamlit/secrets.toml
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# OS junk
+.DS_Store
