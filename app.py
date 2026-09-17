@@ -2,34 +2,19 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Import custom utilities (assuming they are placed in a 'utils' folder or root)
-try:
-    from utils.data_analyzer import analyze_dataset
-    from utils.visualizations import (
-        plot_numerical_distribution,
-        plot_categorical_distribution,
-        plot_correlation_matrix,
-        plot_missing_values
-    )
-    from utils.gemini_service import (
-        generate_dataset_summary,
-        generate_insights,
-        generate_analysis_questions
-    )
-except ImportError:
-    # Fallback if modules are in the same root directory
-    from data_analyzer import analyze_dataset
-    from visualizations import (
-        plot_numerical_distribution,
-        plot_categorical_distribution,
-        plot_correlation_matrix,
-        plot_missing_values
-    )
-    from gemini_service import (
-        generate_dataset_summary,
-        generate_insights,
-        generate_analysis_questions
-    )
+# Import custom utilities from the utils package (using ai_service)
+from utils.data_analyzer import analyze_dataset
+from utils.visualizations import (
+    plot_numerical_distribution,
+    plot_categorical_distribution,
+    plot_correlation_matrix,
+    plot_missing_values
+)
+from utils.ai_service import (
+    generate_dataset_summary,
+    generate_insights,
+    generate_analysis_questions
+)
 
 # Page Configuration
 st.set_page_config(
@@ -87,13 +72,6 @@ if uploaded_file is not None:
         if df.empty:
             st.error("The uploaded CSV file is empty. Please upload a valid dataset.")
             st.stop()
-            
-        # Run deterministic analysis utility (cached)
-        @st.cache_data
-        def run_analysis(dataframe_bytes):
-            # Using dataframe hash or converting to helper for caching if needed, 
-            # but since df is loaded, analyze directly:
-            return analyze_dataset(df)
             
         analysis = analyze_dataset(df)
 
