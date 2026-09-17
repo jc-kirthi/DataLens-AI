@@ -203,6 +203,34 @@ def generate_analysis_questions(dataset_summary: dict) -> str:
 
     except ValueError as ve:
         return f"Configuration Error: {str(ve)}"
+
+def answer_data_query(analysis_summary: dict, user_question: str) -> str:
+    """
+    Sends the dataset summary context and a user question to Gemini
+    to answer natural language queries about the data.
+    """
+    try:
+        client = get_gemini_client()
+        prompt = f"""
+        You are DataLens AI, an expert data science assistant.
+        Here is the statistical summary of the dataset:
+        {analysis_summary}
+        
+        The user is asking a question about this dataset:
+        "{user_question}"
+        
+        Provide a clear, concise, and accurate answer based strictly on the provided statistical summary. If numerical calculation is required that isn't provided, explain what it means or how to find it.
+        """
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        return f"Error generating AI response: {str(e)}"   
+    
+
+    
     except APIError as ae:
         return f"Gemini API request failed: {str(ae)}"
     except Exception as e:
